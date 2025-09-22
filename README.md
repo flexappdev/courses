@@ -17,7 +17,7 @@ The repo is now organised as a three-service stack:
 - `backend/` hosts a FastAPI application that surfaces the course JSON catalogue, search helpers, and detailed slide data on port **2049**.
 - `frontend/` contains a React + Vite client (port **2048**) that visualises every eight-session syllabus.
 - `backoffice/` is a Vite project styled with the shadcn design system and Tailwind CSS; it provides admin-grade controls on port **2050**.
-Shared Docker tooling (`Dockerfile`, `docker-compose.yml`, and `bash.sh`) automates local builds so the FastAPI API, Vite dev servers, and course assets stay in sync.
+Shared Docker tooling (`Dockerfile`, `docker-compose.yml`, and `start.sh`) automates local builds so the FastAPI API, Vite dev servers, and course assets stay in sync.
 
 ## Flow
 1. Outline a course session in Markdown, following the eight-section template (Introduction, four numbered topics, Conclusion, Next steps, and Extra slide).
@@ -29,7 +29,7 @@ Shared Docker tooling (`Dockerfile`, `docker-compose.yml`, and `bash.sh`) automa
 Run the containerised stack from the project root whenever you want to explore the catalogue in the browser (React frontend, FastAPI backend, and shadcn backoffice will all rebuild):
 
 ```bash
-./bash.sh
+./start.sh
 ```
 
 Once the services are up you can visit http://localhost:2048 for the learner-facing catalogue, http://localhost:2049 for the API, and http://localhost:2050 for the backoffice controls.
