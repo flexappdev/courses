@@ -24,6 +24,13 @@ Shared Docker tooling (`Dockerfile`, `docker-compose.yml`, and `bash.sh`) automa
 2. Use the DOCAI assistant to expand the outline into a fully populated CSV/JSON structure with titles, subtitles, intros, key ideas, and examples for every slide.
 3. Convert Markdown or CSV drafts into JSON with `python3 main.py` or call `python3 doc.py` to refresh documentation-oriented outputs.
 4. Generate presentation decks through `python3 slides.py`, or trigger the Google Slides workflow when a connected account is available.
+
+   **Using a Google Slides template?** Before running the script, export your template folder (and/or deck) settings:
+   ```bash
+   export TEMPLATE_FOLDER_ID="16kEgj5o0Lsudoe1_uz0I9UPw9l2bzERv"
+   export TEMPLATE_NAME="2025-TEMPLATE"
+   # (or, to bypass name lookup, set TEMPLATE_ID to your template deck's file ID)
+   ```
 5. Review the produced materials, update objectives or transitions as needed, and iterate until each session meets the target learning outcomes.
 
 Run the containerised stack from the project root whenever you want to explore the catalogue in the browser (React frontend, FastAPI backend, and shadcn backoffice will all rebuild):
