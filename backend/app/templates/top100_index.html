@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+
+{% block title %}Top100 Sets · English Teacher{% endblock %}
+
+{% block content %}
+<section class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div class="space-y-1">
+      <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Top100 sets</h1>
+      <p class="text-sm text-slate-500">Batch plan one hundred short clips per topic and personality.</p>
+    </div>
+    <a
+      href="/top100/new"
+      class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
+    >New Top100</a>
+  </div>
+
+  {% if sets|length == 0 %}
+    <p class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-sm text-slate-500">
+      No Top100 sets yet. Start by creating a new collection to import or generate one hundred clips.
+    </p>
+  {% else %}
+    <ul class="grid gap-4">
+      {% for s in sets %}
+        <li>
+          <a
+            class="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+            href="/top100/{{ s.slug }}"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 class="text-lg font-medium text-slate-900">{{ s.topic }} · {{ s.personality }}</h2>
+                <p class="text-sm text-slate-500">/{{ s.slug }} — {{ s.items|length }} items — updated {{ s.updated_at }}</p>
+              </div>
+              <span class="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">Open</span>
+            </div>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,204 @@
+{% extends "layout.html" %}
+
+{% block title %}Top100 Editor · English Teacher{% endblock %}
+
+{% block head_extra %}
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<section x-data="Top100Editor()" x-init="init()" class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10">
+  <div class="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+    <a href="/top100" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-slate-600 transition hover:border-slate-300 hover:text-slate-900">
+      <span aria-hidden="true">←</span>
+      All sets
+    </a>
+    <span class="hidden sm:block">Manage a ranked list of one hundred clips for automated rendering.</span>
+  </div>
+
+  <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="flex w-full flex-wrap items-center gap-3">
+      <input
+        x-model="topic"
+        placeholder="Topic (e.g., World’s Best Beaches)"
+        class="min-w-[220px] flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+        type="text"
+      />
+      <input
+        x-model="personality"
+        placeholder="Personality (e.g., Gorai)"
+        class="min-w-[180px] flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 sm:flex-none sm:w-48"
+        type="text"
+      />
+      <div class="ml-auto flex flex-wrap items-center gap-2">
+        <button
+          @click="save()"
+          class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+          type="button"
+        >Save</button>
+        <button
+          @click="exportJson()"
+          class="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+          type="button"
+        >Export JSON</button>
+        <label class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900">
+          Import JSON
+          <input type="file" class="hidden" @change="importJson($event)" />
+        </label>
+        <button
+          @click="generate()"
+          class="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-400"
+          type="button"
+        >Generate 100 Clips</button>
+      </div>
+    </div>
+  </div>
+
+  <textarea
+    x-model="description"
+    rows="2"
+    placeholder="Short description..."
+    class="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-900 shadow-sm transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+  ></textarea>
+
+  <div class="flex items-center justify-between text-sm text-slate-600">
+    <span>Items: <span class="font-semibold text-slate-900" x-text="items.length"></span>/100</span>
+    <div class="flex items-center gap-2">
+      <button
+        @click="fillBlank()"
+        class="inline-flex items-center justify-center rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+        type="button"
+      >Autofill empty rows</button>
+      <button
+        @click="reset()"
+        class="inline-flex items-center justify-center rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+        type="button"
+      >Reset 100 rows</button>
+    </div>
+  </div>
+
+  <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-200 text-sm text-slate-700">
+        <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <tr>
+            <th class="px-3 py-2 text-left">#</th>
+            <th class="px-3 py-2 text-left">Title</th>
+            <th class="px-3 py-2 text-left">One-liner (voiceover base)</th>
+            <th class="px-3 py-2 text-left">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <template x-for="(it, idx) in items" :key="it.rank">
+            <tr class="hover:bg-slate-50/80">
+              <td class="px-3 py-2 text-slate-500" x-text="it.rank"></td>
+              <td class="px-3 py-2">
+                <input
+                  class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  x-model="it.title"
+                  placeholder="Title"
+                  type="text"
+                />
+              </td>
+              <td class="px-3 py-2">
+                <input
+                  class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  x-model="it.tagline"
+                  placeholder="Short, punchy one-liner"
+                  type="text"
+                />
+              </td>
+              <td class="px-3 py-2">
+                <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600" x-text="it.clip_status"></span>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block body_scripts %}
+  <script>
+    function Top100Editor(){
+      return {
+        slug: null,
+        topic: "",
+        personality: "",
+        description: "",
+        items: [],
+        init(){
+          const payload = {{ payload | tojson | safe }};
+          if(payload){
+            this.slug = payload.slug;
+            this.topic = payload.topic;
+            this.personality = payload.personality;
+            this.description = payload.description || "";
+            this.items = payload.items || [];
+          } else {
+            this.reset();
+          }
+        },
+        reset(){
+          this.items = Array.from({length:100}, (_,i)=>({
+            rank: i+1, title: `Item ${i+1}`, tagline: `One-liner for item ${i+1}`, image_url: null, clip_status: "todo", clip_url: null, source: "library"
+          }));
+        },
+        fillBlank(){
+          this.items = this.items.map((it, i)=>({
+            ...it,
+            title: it.title && it.title.trim() ? it.title : `Item ${i+1}`,
+            tagline: it.tagline && it.tagline.trim() ? it.tagline : `One-liner for ${this.topic || 'topic'} #${i+1}`
+          }));
+        },
+        async save(){
+          const body = {
+            topic: this.topic, personality: this.personality,
+            description: this.description, items: this.items
+          };
+          if(!this.slug){
+            const res = await fetch("/api/top100",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+            const j = await res.json();
+            if(j.ok){ this.slug = j.slug; window.history.replaceState({}, "", `/top100/${this.slug}`); alert("Saved."); }
+          } else {
+            const res = await fetch(`/api/top100/${this.slug}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+            const j = await res.json();
+            if(j.ok){ alert("Updated."); }
+          }
+        },
+        exportJson(){
+          const obj = { slug: this.slug, topic: this.topic, personality: this.personality, description: this.description, items: this.items };
+          const blob = new Blob([JSON.stringify(obj, null, 2)], {type:"application/json"});
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = `${(this.topic||'top100')}-${(this.personality||'persona')}.json`;
+          a.click();
+        },
+        importJson(ev){
+          const file = ev.target.files[0];
+          if(!file) return;
+          const fr = new FileReader();
+          fr.onload = () => {
+            try{
+              const j = JSON.parse(fr.result);
+              this.slug = j.slug || this.slug;
+              this.topic = j.topic || this.topic;
+              this.personality = j.personality || this.personality;
+              this.description = j.description || this.description;
+              if(Array.isArray(j.items) && j.items.length===100){ this.items = j.items; }
+            }catch(e){ alert("Invalid JSON"); }
+          };
+          fr.readAsText(file);
+        },
+        async generate(){
+          if(!this.slug){ await this.save(); }
+          const res = await fetch(`/api/top100/${this.slug}/generate`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({mode:"mixed", seconds_per_clip:10})});
+          const j = await res.json();
+          if(j.ok){ this.items = this.items.map(it=>({...it, clip_status:"queued"})); alert("Queued 100 × 10s clips."); }
+        }
+      }
+    }
+  </script>
+{% endblock %}
