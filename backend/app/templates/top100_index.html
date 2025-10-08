@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.4/dist/tailwind.min.css">
+  <title>VAD · Top100</title>
+</head>
+<body class="bg-neutral-950 text-neutral-100">
+  <header class="sticky top-0 z-20 bg-neutral-900/80 backdrop-blur border-b border-neutral-800">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+      <h1 class="text-xl font-semibold">Top100 Sets</h1>
+      <a href="/top100/new" class="px-3 py-1.5 rounded-xl bg-neutral-200 text-neutral-900 hover:bg-white">New Top100</a>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-6 space-y-4">
+    {% if sets|length == 0 %}
+      <p class="text-neutral-400">No Top100 sets yet. Click “New Top100”.</p>
+    {% else %}
+      <ul class="grid gap-3">
+        {% for s in sets %}
+        <li class="border border-neutral-800 rounded-2xl p-4 hover:bg-neutral-900">
+          <a class="block" href="/top100/{{ s.slug }}">
+            <div class="text-lg font-medium">{{ s.topic }} · {{ s.personality }}</div>
+            <div class="text-sm text-neutral-400">/{{ s.slug }} — {{ s.items|length }} items — updated {{ s.updated_at }}</div>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!doctype html>
+<html x-data="Top100Editor()" x-init="init()" class="h-full">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.4/dist/tailwind.min.css">
+  <title>VAD · Top100 Editor</title>
+</head>
+<body class="bg-neutral-950 text-neutral-100 h-full">
+  <header class="sticky top-0 z-20 bg-neutral-900/80 backdrop-blur border-b border-neutral-800">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap gap-2 items-center">
+      <a href="/top100" class="text-sm text-neutral-400 hover:text-neutral-200">← All sets</a>
+      <div class="grow"></div>
+      <input x-model="topic" placeholder="Topic (e.g., World’s Best Beaches)" class="px-3 py-1.5 bg-neutral-800 rounded-xl w-64"/>
+      <input x-model="personality" placeholder="Personality (e.g., Gorai)" class="px-3 py-1.5 bg-neutral-800 rounded-xl w-48"/>
+      <button @click="save()" class="px-3 py-1.5 rounded-xl bg-neutral-200 text-neutral-900 hover:bg-white">Save</button>
+      <button @click="exportJson()" class="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700">Export JSON</button>
+      <label class="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 cursor-pointer">
+        Import JSON<input type="file" class="hidden" @change="importJson($event)"/>
+      </label>
+      <button @click="generate()" class="px-3 py-1.5 rounded-xl bg-emerald-400 text-emerald-950 hover:bg-emerald-300">Generate 100 Clips</button>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6 space-y-4">
+    <textarea x-model="description" rows="2" placeholder="Short description..." class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl p-3"></textarea>
+
+    <div class="text-sm text-neutral-400">Items: <span class="text-neutral-200 font-medium" x-text="items.length"></span>/100</div>
+
+    <div class="overflow-x-auto border border-neutral-800 rounded-2xl">
+      <table class="w-full text-sm">
+        <thead class="bg-neutral-900 text-neutral-300">
+          <tr>
+            <th class="p-2 text-left">#</th>
+            <th class="p-2 text-left">Title</th>
+            <th class="p-2 text-left">One-liner (voiceover base)</th>
+            <th class="p-2 text-left">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="(it, idx) in items" :key="it.rank">
+            <tr class="border-t border-neutral-800">
+              <td class="p-2 w-10" x-text="it.rank"></td>
+              <td class="p-2"><input class="w-full bg-neutral-900 rounded-lg p-1.5" x-model="it.title" placeholder="Title"/></td>
+              <td class="p-2"><input class="w-full bg-neutral-900 rounded-lg p-1.5" x-model="it.tagline" placeholder="Short, punchy one-liner"/></td>
+              <td class="p-2">
+                <span class="px-2 py-1 rounded-lg border border-neutral-700" x-text="it.clip_status"></span>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button @click="fillBlank()" class="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700">Autofill empty rows</button>
+      <button @click="reset()" class="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700">Reset 100 rows</button>
+    </div>
+  </main>
+
+  <script>
+    function Top100Editor(){
+      return {
+        slug: null,
+        topic: "",
+        personality: "",
+        description: "",
+        items: [],
+        init(){
+          const payload = {{ payload | tojson | safe }};
+          if(payload){
+            this.slug = payload.slug;
+            this.topic = payload.topic;
+            this.personality = payload.personality;
+            this.description = payload.description || "";
+            this.items = payload.items || [];
+          } else {
+            this.reset();
+          }
+        },
+        reset(){
+          this.items = Array.from({length:100}, (_,i)=>({
+            rank: i+1, title: `Item ${i+1}`, tagline: `One-liner for item ${i+1}`, image_url: null, clip_status: "todo", clip_url: null, source: "library"
+          }));
+        },
+        fillBlank(){
+          this.items = this.items.map((it, i)=>({
+            ...it,
+            title: it.title && it.title.trim() ? it.title : `Item ${i+1}`,
+            tagline: it.tagline && it.tagline.trim() ? it.tagline : `One-liner for ${this.topic || 'topic'} #${i+1}`
+          }));
+        },
+        async save(){
+          const body = {
+            topic: this.topic, personality: this.personality,
+            description: this.description, items: this.items
+          };
+          if(!this.slug){
+            const res = await fetch("/api/top100",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+            const j = await res.json();
+            if(j.ok){ this.slug = j.slug; window.history.replaceState({}, "", `/top100/${this.slug}`); alert("Saved."); }
+          } else {
+            const res = await fetch(`/api/top100/${this.slug}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+            const j = await res.json();
+            if(j.ok){ alert("Updated."); }
+          }
+        },
+        exportJson(){
+          const obj = { slug: this.slug, topic: this.topic, personality: this.personality, description: this.description, items: this.items };
+          const blob = new Blob([JSON.stringify(obj, null, 2)], {type:"application/json"});
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = `${(this.topic||'top100')}-${(this.personality||'persona')}.json`;
+          a.click();
+        },
+        importJson(ev){
+          const file = ev.target.files[0];
+          if(!file) return;
+          const fr = new FileReader();
+          fr.onload = () => {
+            try{
+              const j = JSON.parse(fr.result);
+              this.slug = j.slug || this.slug;
+              this.topic = j.topic || this.topic;
+              this.personality = j.personality || this.personality;
+              this.description = j.description || this.description;
+              if(Array.isArray(j.items) && j.items.length===100){ this.items = j.items; }
+            }catch(e){ alert("Invalid JSON"); }
+          };
+          fr.readAsText(file);
+        },
+        async generate(){
+          if(!this.slug){ await this.save(); }
+          const res = await fetch(`/api/top100/${this.slug}/generate`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({mode:"mixed", seconds_per_clip:10})});
+          const j = await res.json();
+          if(j.ok){ this.items = this.items.map(it=>({...it, clip_status:"queued"})); alert("Queued 100 × 10s clips."); }
+        }
+      }
+    }
+  </script>
+</body>
+</html>
