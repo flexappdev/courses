@@ -1,84 +1,121 @@
-import sys
-import os
+"""
+Utility script for keeping Markdown, JSON, and Google Slides assets aligned.
 
+Run from the project root:
 
-# Add the top-level folder to sys.path
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
-# import dev.markdown.update_pages as update_pages
+    python3 slides.py                     # Process `_original/` by default
+    python3 slides.py path/to/file.md     # Process a single Markdown file
+    python3 slides.py path/to/folder      # Process an alternative folder
+
+The script ensures that each Markdown file has a JSON export living in the
+same directory with the same base filename. Google Slides automation is then
+triggered for every directory that received a fresh JSON export.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+from typing import Iterable, List, Sequence, Tuple
+
 import dev.courses_json as courses_json
 import dev.courses_update as courses_update
-import dev.courses_slides as courses_slides
-import dev.courses_swiper as courses_swiper
 import dev.courses_google_slides as courses_google_slides
 
 
+def _discover_markdown(target: Path) -> Tuple[Path, List[Path]]:
+    """Return the directory to process and a list of Markdown files within it."""
+    target = target.expanduser()
+    if target.is_file():
+        if target.suffix.lower() != ".md":
+            raise ValueError(f"Expected a Markdown file, received: {target}")
+        return target.parent.resolve(), [target.resolve()]
+
+    if target.is_dir():
+        directory = target.resolve()
+        markdown_files = sorted(p for p in directory.glob("*.md") if p.is_file())
+        if not markdown_files:
+            raise FileNotFoundError(f"No Markdown files found in {directory}")
+        return directory, markdown_files
+
+    raise FileNotFoundError(f"Target does not exist: {target}")
 
 
+def _generate_json(md_files: Sequence[Path]) -> List[Path]:
+    """Create JSON exports next to each Markdown file and return their paths."""
+    written_json: List[Path] = []
 
-"""
-clear && cd ~/cline/ && source venv/bin/activate && cd courses && python3 slides.py
-clear && cd ~/cline/ && source venv/bin/activate && cd courses && python3 main.py
-clear && cd ~/cline/ && source venv/bin/activate && cd courses && python3 main.py
+    for md_path in md_files:
+        payload = courses_json.parse_markdown_file(str(md_path))
+        json_path = md_path.with_suffix(".json")
+        json_text = json.dumps(payload, indent=2, ensure_ascii=False)
 
+        if json_path.exists():
+            existing = json_path.read_text(encoding="utf-8")
+            if existing == json_text:
+                print(f"JSON already up to date: {json_path}")
+                continue
 
-"""
+        json_path.write_text(json_text, encoding="utf-8")
+        print(f"Wrote JSON: {json_path}")
+        written_json.append(json_path)
 
-
-
-print("Courses main")
-
-
-# def create_presenation()
-
-def main():
-    # 2025
-    input_folder = "_original/"
-    output_folder = "updated/"
-    slides_folder = "slides/"
-    json_folder = "json/"
-
-    # 2024
-    # input_folder = "docs/_2024/"
-    # output_folder = "docs/2024/"
-    # markdown_folder = "docs/2024/"
-    # db_name = "2025DB"
-    # collection_name = "QA"
+    return written_json
 
 
-    ## COURSES UPDATES
-    courses_update.rename_files_in_folder(input_folder)
-    # courses_update.print_images_for_each_markdown(input_folder)
+def _trigger_google_slides(json_paths: Iterable[Path]) -> None:
+    """Run the Google Slides automation once per directory."""
+    directories = sorted({path.parent for path in json_paths})
+    for directory in directories:
+        try:
+            courses_google_slides.main(str(directory))
+        except Exception as exc:  # pragma: no cover - external API interaction
+            print(f"Google Slides automation failed for {directory}: {exc}")
 
-    courses_json.main(input_folder)
-    # courses_update.copy_to_updated_folder(input_folder, output_folder)
-    # courses_update.add_images_to_h2_sections(output_folder)
-    # courses_update.add_json_section(output_folder)
-    # courses_update.add_h2s_section(output_folder)
-    # courses_update.print_missing_images_headers(output_folder)
 
-    
-    ## Google Slides Update
-    courses_google_slides.main(json_folder)
+def main(argv: Sequence[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(
+        description="Synchronise Markdown files with JSON exports and Google Slides decks."
+    )
+    parser.add_argument(
+        "target",
+        nargs="?",
+        default="_original",
+        help="Path to a Markdown file or a folder containing Markdown files.",
+    )
+    parser.add_argument(
+        "--skip-rename",
+        action="store_true",
+        help="Skip sanitising filenames before processing.",
+    )
+    parser.add_argument(
+        "--skip-google",
+        action="store_true",
+        help="Skip the Google Slides automation step.",
+    )
+    args = parser.parse_args(argv)
 
-    ## COURSES SLIDES
-    # courses_slides.main(output_folder)
-    # courses_update.copy_to_updated_folder(input_folder, output_folder)
-    # courses_slides.add_slides_section(output_folder, slides_folder)
-    # courses_swiper.add_swiper_section(output_folder, slides_folder)
+    target_path = Path(args.target)
+    base_dir, markdown_files = _discover_markdown(target_path)
 
-    # update_pages.copy_to_prod_folder(input_folder, output_folder)
-    # update_pages.remove_h2_images_section(output_folder)
+    if not args.skip_rename and target_path.is_dir():
+        courses_update.rename_files_in_folder(str(base_dir))
+        # Re-discover Markdown files after potential renames.
+        _, markdown_files = _discover_markdown(base_dir)
 
-    # markdown_to_json.main(output_folder, db_name, collection_name)
-    # update_pages.main(markdown_folder, db_name, collection_name)
+    if not markdown_files:
+        print("No Markdown files to process.")
+        return
 
-    # update_pages.add_images(output_folder)
-    # Example usage
-    # update_pages.move_h2_conclusion_section_to_bottom(output_folder)
+    print(f"Processing {len(markdown_files)} Markdown file(s) in {base_dir}")
+    json_paths = _generate_json(markdown_files)
 
-    # update_pages.save_to_mongo(output_folder, db_name, collection_name)
-    # Example usage
-    # check_lad.main(output_folder)
-    # print("copy_top_prod_folder completed.")
+    if json_paths and not args.skip_google:
+        _trigger_google_slides(json_paths)
+    elif not json_paths:
+        print("No JSON updates were necessary.")
 
-main()
+
+if __name__ == "__main__":
+    main()
