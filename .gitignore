@@ -212,3 +212,16 @@ dist/
 frontend/node_modules/
 backoffice/node_modules/
 !backoffice/src/lib/
+# === secrets ===
+dev/credentials.json
+dev/credentials2.json
+token.json
+*.pem
+*.p12
+*.pfx
+*.key
+*.crt
+*.der
+.env
+.env.*
+secrets/*.json
